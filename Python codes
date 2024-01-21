@@ -1,0 +1,83 @@
+import csv
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+# Function to open IMDb website, search for a movie, and download the rating
+def get_movie_rating(movie_name, webdriver_path):
+    # Set Chrome options
+    chrome_options = webdriver.ChromeOptions()
+    chrome_options.binary_location = "chrome_driver_path"
+
+    # Specify the path to the ChromeDriver executable
+    chrome_options.add_argument(f"webdriver.chrome.driver={webdriver_path}")
+
+    # Open IMDb website
+    driver = webdriver.Chrome(options=chrome_options)
+    The line `rating_element = WebDriverWait(driver, 40).until(EC.presence_of_element_located((By.XPATH, '//*[@id="__next"]/main/div/section[1]/section/div[3]/section/section/div[3]/div[2]/div[2]/div[1]/div/div[1]/a/span/div/div[2]/div[1]/span[1]')))` is locating the element on the IMDb website that contains the movie rating.
+    driver.get("https://www.imdb.com/")
+
+    try:
+        # Find the search box and input the movie name
+        search_box = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.NAME, "q"))
+        )
+        search_box.send_keys(movie_name)
+        search_box.send_keys(Keys.RETURN)
+
+        # Wait for search results and click on the first result
+        first_result = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.XPATH, '//*[@id="__next"]/main/div[2]/div[3]/section/div/div[1]/section[2]/div[2]/ul/li[1]'))
+    )
+
+        first_result.click()
+        # Wait for the rating element to load
+        rating_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '//*[@id="__next"]/main/div/section[1]/section/div[3]/section/section/div[3]/div[2]/div[2]/div[1]/div/div[1]/a/span/div/div[2]/div[1]/span[1]')))
+
+        # Get the movie rating
+        movie_rating = driver.execute_script("return arguments[0].textContent;", rating_element)
+        return movie_rating
+        
+
+    finally:
+        # Close the browser window
+        driver.quit()
+
+# Function to read CSV file and get movie names
+def get_movie_names_from_csv(csv_file):
+    movie_data = []
+    with open(csv_file, 'r') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            # Assuming the movie names are in a column named 'MovieName'
+            movie_data.append(row)
+    return movie_data
+
+# Main function
+def main():
+    # Set the path to your chromedriver.exe
+    chromedriver_path = "chromedriver_path"
+
+    # Replace 'your_csv_file.csv' with the actual path to your CSV file
+    csv_file_path = "csv_path"
+
+    movie_data = get_movie_names_from_csv(csv_file_path)
+
+    for movie_entry in movie_data:
+        movie_name = movie_entry['MovieName']
+        movie_rating = get_movie_rating(movie_name, chromedriver_path)
+        
+        # Save the rating in the 'ratings' column
+        movie_entry['ratings'] = movie_rating
+
+    # Save the updated data back to the CSV file
+    with open(csv_file_path, 'w', newline='') as file:
+        fieldnames = movie_data[0].keys()
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(movie_data)
+
+if __name__ == "__main__":
+    main()
